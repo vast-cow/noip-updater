@@ -1,0 +1,8 @@
+{
+  "noip": {
+    "username": "username",
+    "password": "password",
+    "hostname": "all.ddnskey.com",
+    "useragent": "your-name noip-updater/1.0 Linux your-email@example.com"
+  }
+}

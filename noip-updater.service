@@ -1,0 +1,14 @@
+[Unit]
+Description=No-IP updater via router UPnP
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/noip-updater
+ExecStart=%h/.local/share/noip-updater/.venv/bin/python -u %h/.local/share/noip-updater/noip_updater.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=noip-updater
+UMask=0077
+
+[Install]
+WantedBy=default.target
