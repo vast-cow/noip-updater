@@ -46,9 +46,9 @@ Direct CLI use retains working-directory defaults for `config.json` and `state.j
 
 Layout references: [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/) and [Python venv documentation](https://docs.python.org/3/library/venv.html).
 
-## Behavior and differences from task.md
+## Behavior and reliability
 
-The supplied article and script are the baseline, with these reliability corrections:
+The updater implements the following behavior and reliability safeguards:
 
 - Only No-IP `good` and `nochg` responses count as success, and every response line must contain exactly one public IP matching the requested IP. Missing, malformed, non-ASCII, oversized, or mismatched responses are rejected. Credential, account, and unknown response errors stop the process for manual intervention. After fixing the problem, restart with `systemctl --user restart noip-updater.service`. No automatic restart policy bypasses that stop.
 - No-IP requests are spaced at least 5 minutes apart, including failed attempts and rapid router IP changes. No-IP `911` and HTTP 5xx failures wait at least 30 minutes. Both intervals use a monotonic clock measured from request completion. Router checks and local persistence retries run every 60 seconds; requests have a 30-second timeout. Request deadlines are kept in memory, so restarting the process resets them; avoid restarting during a required wait.
