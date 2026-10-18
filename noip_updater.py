@@ -134,6 +134,27 @@ def load_config(path):
     return config
 
 
+def check_config(config_path, state_path):
+    config = load_config(config_path)
+    noip = config["noip"]
+    if (noip["username"].strip() == "username" or
+            noip["password"].strip() == "password" or
+            "your-name" in noip["useragent"] or
+            "your-email@example.com" in noip["useragent"]):
+        raise ValueError("replace the sample credentials and User-Agent")
+    path = Path(state_path)
+    if path.resolve() == Path(config_path).resolve() or _bak_name(path).resolve() == Path(config_path).resolve():
+        raise ValueError("configuration and state paths must differ")
+    # Probe actual creation permissions without touching either state file.
+    with tempfile.TemporaryFile(dir=path.parent):
+        pass
+    for candidate in (path, _bak_name(path)):
+        if candidate.exists():
+            with candidate.open("r+b"):
+                pass
+    return config
+
+
 def noip_build_opener(config):
     credentials = config["noip"]
     manager = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -294,8 +315,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path("config.json"))
     parser.add_argument("--state", type=Path, default=Path("state.json"))
+    parser.add_argument("--check-config", action="store_true",
+                        help="validate configuration and state access without network communication")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if args.check_config:
+        try:
+            check_config(args.config, args.state)
+        except Exception as error:
+            LOG.error("Configuration check failed (%s); check JSON, required fields, sample values and state access", type(error).__name__)
+            return 1
+        LOG.info("Configuration and state access OK; authentication was not tested")
+        return 0
     stop = threading.Event()
     for signum in (signal.SIGTERM, signal.SIGINT):
         signal.signal(signum, lambda *_: stop.set())

@@ -230,7 +230,7 @@ class UpdaterTests(unittest.TestCase):
         stop = Mock()
         stop.is_set.side_effect = [False, False, False, True]
         with patch.object(app.argparse.ArgumentParser, 'parse_args',
-                          return_value=Mock(config='config.json', state='state.json')), \
+                          return_value=Mock(config='config.json', state='state.json', check_config=False)), \
              patch.object(app.threading, 'Event', return_value=stop), \
              patch.object(app.signal, 'signal'), \
              patch.object(app, 'load_config', return_value={}), \

@@ -2,49 +2,49 @@
 
 A Python 3.9+ service that reads the router's public IP with `miniupnpc`, checks every 60 seconds, and contacts No-IP only when that IP differs from the last successfully saved update. Requires Linux/systemd for the service, a reachable UPnP Internet Gateway Device, and UPnP enabled on that router. A private/CGNAT router address is rejected; DDNS cannot make a CGNAT connection publicly reachable.
 
-## Install
+## Install and start
 
-Run as your normal user from this project directory:
+Run `./install.sh` as your normal user from the checkout. Python 3.9+, venv/pip support, miniupnpc build prerequisites, and a functional systemd user session are required. Install missing OS packages through your distribution package manager; the installer never runs sudo. It checks the user manager, prepares dependencies, generates the service, and reloads systemd. It does not start or restart the service.
 
-```sh
-mkdir -p "$HOME/.local/share/noip-updater"
-cp noip_updater.py requirements.txt config.example.json "$HOME/.local/share/noip-updater/"
-cd "$HOME/.local/share/noip-updater"
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-cp config.example.json config.json
-chmod 600 config.json
-${EDITOR:-vi} config.json
-```
+Default locations (absolute `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, and `XDG_STATE_HOME` override their respective bases):
 
-Use `python3.9 -m venv .venv` instead if selecting Python 3.9 explicitly.
+| Purpose | Default path |
+|---|---|
+| Application and samples | `~/.local/share/noip-updater/current/` |
+| Venv shortcut | `~/.local/share/noip-updater/.venv/` |
+| Credentials | `~/.config/noip-updater/config.json` |
+| State and backup | `~/.local/state/noip-updater/state.json`, `state_bak.json` |
+| Generated user service | `~/.config/systemd/user/noip-updater.service` |
+| Logs | systemd journal |
 
-Use the username/password of a No-IP DDNS Key and `all.ddnskey.com`, or credentials and hostname appropriate to your No-IP account. Set a descriptive User-Agent identifying your client and contact email. The example contains placeholders only. Python venv support and build prerequisites for miniupnpc may need installation through your distribution's package manager.
+Application directories are private (0700); configuration, state, and generated files are private (0600). Venv executables retain executable permissions. The service contains quoted absolute paths and works independently of the source checkout or working directory. `noip-updater.service` in the checkout is an installer template, not a unit to copy directly.
 
-Test in the foreground (this performs real updates with your credentials):
+After installation, edit the configuration and run the exact configuration-check command printed by the installer. With default paths:
 
 ```sh
-.venv/bin/python noip_updater.py
-```
-
-Stop with Ctrl-C. By default `config.json`, `state.json`, and `state_bak.json` are relative to the working directory. Optional `--config PATH` and `--state PATH` select other locations; the state directory must already exist and be writable. Keep one updater process per state file. When changing hostname/account, stop the service and remove or relocate both state files so the new target receives its first update.
-
-## User service
-
-From the original project directory:
-
-```sh
-mkdir -p "$HOME/.config/systemd/user"
-cp noip-updater.service "$HOME/.config/systemd/user/"
-systemctl --user daemon-reload
+${EDITOR:-vi} "$HOME/.config/noip-updater/config.json"
+"$HOME/.local/share/noip-updater/.venv/bin/python"   "$HOME/.local/share/noip-updater/current/noip_updater.py"   --config "$HOME/.config/noip-updater/config.json"   --state "$HOME/.local/state/noip-updater/state.json" --check-config
 systemctl --user enable --now noip-updater.service
-loginctl enable-linger "$USER"
 journalctl --user-unit noip-updater.service -f
 ```
 
-The unit uses `%h/.local/share/noip-updater` and its virtual environment. Edit both `WorkingDirectory` and `ExecStart` if installing elsewhere. Enabling linger may require administrator authorization. Check status with `systemctl --user status noip-updater.service`. Stop and disable with `systemctl --user disable --now noip-updater.service`.
+The check validates JSON, required fields, sample credentials/User-Agent, and state storage access without importing miniupnpc, contacting the router, or authenticating with No-IP. Errors omit credential values. Use a No-IP DDNS Key username/password with `all.ddnskey.com`, or credentials/hostname appropriate to your account; `all.ddnskey.com` itself is a valid target. Set a descriptive User-Agent with your contact email.
 
-User instances normally start `default.target`; this unit uses it instead of the article's `network-online.target`, which requires an unspecified system-to-user bridge. Network readiness is handled by retries, so no bridge is required. Linger starts the user manager at boot without an interactive login. This project does not install or start services automatically.
+For boot-time operation before login, separately run `loginctl enable-linger "$USER"`; this may require administrator authorization. The user unit uses `default.target`; network readiness is handled by retries.
+
+## Updates, migration and removal
+
+Run `./install.sh` again with the same XDG environment to update. Existing configuration and state are preserved. Each update creates a release and its venv directly in its permanent directory under `releases/`, verifies dependencies, then switches `current` and generates a unit pinned to that release. This layout avoids moving venvs and preserves the dependencies of an already running process. Preparation failure leaves the current release and service untouched. Old releases are retained until uninstall.
+
+Updates never stop or restart the service automatically. After checking the configuration, explicitly run `systemctl --user restart noip-updater.service`. Request deadlines are still in memory: wait out any required retry interval (up to 30 minutes) before restarting. Customize the unit with `systemctl --user edit noip-updater.service`; drop-ins are preserved.
+
+For an older installation that kept everything in the application directory, stop the old service first and copy your existing `config.json`, `state.json`, and `state_bak.json` into the separate configuration/state directories before starting the generated service. The installer does not migrate credentials automatically. Keep one updater per state file; when changing account/hostname, stop the service and relocate both state files.
+
+`./uninstall.sh` stops/disables the installed unit and removes the application, all releases/venvs, and the distributed unit. Configuration and state remain. `./uninstall.sh --purge` also removes the application's configuration and state directories. Drop-ins remain for user management. Use the same XDG environment as installation.
+
+Direct CLI use retains working-directory defaults for `config.json` and `state.json`; use `--config PATH` and `--state PATH` to override them. The state directory must exist.
+
+Layout references: [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/) and [Python venv documentation](https://docs.python.org/3/library/venv.html).
 
 ## Behavior and differences from task.md
 
