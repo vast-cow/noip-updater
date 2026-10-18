@@ -1,4 +1,4 @@
-"""Router-derived, change-only No-IP updater (Python 3.10+)."""
+"""Router-derived, change-only No-IP updater (Python 3.9+)."""
 import argparse
 import ipaddress
 import json

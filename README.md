@@ -1,6 +1,6 @@
 # No-IP updater
 
-A Python 3.10+ service that reads the router's public IP with `miniupnpc`, checks every 60 seconds, and contacts No-IP only when that IP differs from the last successfully saved update. Requires Linux/systemd for the service, a reachable UPnP Internet Gateway Device, and UPnP enabled on that router. A private/CGNAT router address is rejected; DDNS cannot make a CGNAT connection publicly reachable.
+A Python 3.9+ service that reads the router's public IP with `miniupnpc`, checks every 60 seconds, and contacts No-IP only when that IP differs from the last successfully saved update. Requires Linux/systemd for the service, a reachable UPnP Internet Gateway Device, and UPnP enabled on that router. A private/CGNAT router address is rejected; DDNS cannot make a CGNAT connection publicly reachable.
 
 ## Install
 
@@ -16,6 +16,8 @@ cp config.example.json config.json
 chmod 600 config.json
 ${EDITOR:-vi} config.json
 ```
+
+Use `python3.9 -m venv .venv` instead if selecting Python 3.9 explicitly.
 
 Use the username/password of a No-IP DDNS Key and `all.ddnskey.com`, or credentials and hostname appropriate to your No-IP account. Set a descriptive User-Agent identifying your client and contact email. The example contains placeholders only. Python venv support and build prerequisites for miniupnpc may need installation through your distribution's package manager.
 
